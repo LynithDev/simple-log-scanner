@@ -1,0 +1,35 @@
+{
+    "token": "token",
+    "embed": {
+        "title": "optional",
+        "description": "optional",
+        "color": "optional HEX code (Can be with or without the hashtag)",
+        "footer": {
+            "text": "optional",
+            "icon": "optional (https only)"
+        }
+    },
+    "extensions": [
+        ".txt",
+        ".log",
+        "you can leave a blank element if you want to support every file type"
+    ],
+    "checks": {
+        "Title of fix": {
+            "method": "matches includes or equals",
+            "value": "can vary from regex to strings",
+            "fix": [
+                "Each array element is a new line in the embed",
+                "[Embeds support Markdown lol](https://github.com/LynithDev/)"
+            ]
+        },
+        "Incompatible Java Version (Not java 1.8)": {
+            "method": "matches",
+            "value": "/(java version \"((?!1\\.8\\.\\d*)(\\d*)\\.(\\d*)(\\.|_)(\\d*))\")/ig",
+            "fix": [
+                "Please install Java 1.8 (You have {match})",
+                "[Download](https://google.com)"
+            ]
+        }
+    } 
+}

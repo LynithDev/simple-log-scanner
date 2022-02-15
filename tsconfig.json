@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+      "module": "CommonJS",
+      "target": "ES2020",
+      "outDir": "dist",
+      "lib": [
+        "ESNext",
+        "ESNext.Array",
+        "ESNext.AsyncIterable",
+        "ESNext.Intl",
+        "ESNext.Symbol",
+        "DOM"
+      ],
+      // "baseUrl": ".",
+      "sourceMap": false,
+      "inlineSourceMap": true,
+      "inlineSources": true,
+      "incremental": true,
+      "esModuleInterop": true,
+      "resolveJsonModule": true,
+      "types": [
+        "node",
+      ]
+    },
+    "include": [
+      "src/**/*",
+    ],
+    "exclude": [
+      "node_modules"
+    ]
+  }

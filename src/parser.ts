@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Message, MessageAttachment, MessageEmbed } from 'discord.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import Tesseract from 'tesseract.js';
 import { Check, ConfigType, Embed } from '.';
 
 export class Parser {
@@ -14,13 +15,32 @@ export class Parser {
         const attachments: MessageAttachment[] = [];
         const matchValues: RegExpMatchArray[] = [];
 
-        config.extensions.forEach((ext) => this.message.attachments.filter((attachment) => attachment.name.endsWith(ext)).forEach((attachment) => attachments.push(attachment)));
+        config.extensions.forEach((ext) => this.message.attachments.filter((attachment) => attachment.name.endsWith(ext) || (config.image_scanning ? attachment.contentType.startsWith('image') : true)).forEach((attachment) => attachments.push(attachment)));
 
         for (let i = 0; i < attachments.length; i++) {
             const value = this.message.attachments.at(i);
 
+            // eslint-disable-next-line no-continue
+            if (value == undefined) continue;
+
             if (value.size / 1000 > 4096) return;
-            const content: string = (await axios.get(value.url)).data;
+
+            const tempContent: string[] = [];
+
+            if (value.contentType.startsWith('image')) {
+                tempContent.push((await Tesseract.recognize(value.url, 'eng', {
+                    logger: (m) => console.log(m),
+                })).data.text);
+            } else {
+                tempContent.push((await axios.get(value.url)).data);
+            }
+
+            console.log(tempContent);
+
+            const content = tempContent.join('\n');
+
+            // const content: string = (value.contentType.startsWith('image') ? (await Tesseract.recognize(value.url)).data.text : (await axios.get(value.url)).data);
+            // console.log(content);
 
             Object.entries(config.checks).map((value) => {
                 const check = value[1];

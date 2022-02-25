@@ -23,6 +23,7 @@ export type Embed = {
 
 export type ConfigType = {
     token:string,
+    image_scanning: boolean,
     extensions: string[],
     embed: Embed,
     checks: {

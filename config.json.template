@@ -9,6 +9,7 @@
             "icon": "optional (https only)"
         }
     },
+    "image_scanning": true,
     "extensions": [
         ".txt",
         ".log",

@@ -6,7 +6,9 @@ import {
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import Tesseract from 'tesseract.js';
-import { Check, ConfigType, Embed } from '.';
+import {
+    Check, ConfigType, Embed, Note,
+} from '.';
 
 export class Parser {
     public async handleButtons(interaction: ButtonInteraction) {
@@ -32,14 +34,42 @@ export class Parser {
     }
 
     public async parse(message: Message): Promise<[string, Check][]> {
-        const validChecks: [string, Check][] = [];
         const config: ConfigType = JSON.parse(readFileSync(join(__dirname, '..', 'config.json'), 'utf-8'));
 
         if (!config.whitelist.includes('*') && !config.whitelist.includes(message.channel.id)) return;
         const attachments: MessageAttachment[] = [];
-        const matchValues: RegExpMatchArray[] = [];
 
         config.extensions.forEach((ext) => message.attachments.filter((attachment) => attachment.name.endsWith(ext) || (config.image_scanning ? attachment.contentType.startsWith('image') : true)).forEach((attachment) => attachments.push(attachment)));
+
+        const embedProperties = {
+            ...{
+                author: {
+                    text: 'Scanner',
+                    icon: message.client.user.displayAvatarURL(),
+                },
+                description: '**Note:** This is an automated support bot and is not always be accurate!',
+                color: '#f05050',
+                footer: {
+                    icon: 'https://cdn.discordapp.com/avatars/507646181816401961/f19611b032be5eb402e1c1010e8f19b5.webp',
+                    text: 'Scanner by Lynith#0231',
+                },
+            },
+            ...config.embed,
+        };
+
+        const embed = new MessageEmbed({
+            author: {
+                icon_url: embedProperties.author.icon,
+                name: embedProperties.author.text,
+            },
+            title: embedProperties.title,
+            description: `${embedProperties.description}\n`,
+            color: `#${embedProperties.color.replaceAll('#', '')}`.matchAll(/[0-9A-Fa-f]{6}/g) ? `#${embedProperties.color.replaceAll('#', '')}` : '#ffffff',
+            footer: {
+                text: embedProperties.footer.text,
+                icon_url: embedProperties.footer.icon,
+            },
+        });
 
         for (let i = 0; i < attachments.length; i++) {
             const value = message.attachments.at(i);
@@ -61,72 +91,45 @@ export class Parser {
 
             const content = tempContent.join('\n');
 
-            Object.entries(config.checks).map((value) => {
+            Object.entries(config.checks).forEach((value) => {
                 const check = value[1];
 
                 switch (check.method) {
                     case 'includes':
-                        if (content.includes(check.value)) validChecks.push([value[0], check]);
+                        if (content.includes(check.value)) embed.addField(value[0], this.format(value[1].fix.join('\n'), message));
                         break;
                     case 'equals':
-                        if (content == check.value) validChecks.push([value[0], check]);
+                        if (content == check.value) embed.addField(value[0], this.format(value[1].fix.join('\n'), message));
                         break;
                     case 'matches':
                         if (
                             content.match(RegExp(check.value.split('/')[1], check.value.split('/')[check.value.split('/').length - 1])) != null
                             && content.match(RegExp(check.value.split('/')[1], check.value.split('/')[check.value.split('/').length - 1])).length != 0
                         ) {
-                            validChecks.push([value[0], check]);
-                            matchValues.push(content.match(RegExp(check.value.split('/')[1], check.value.split('/')[check.value.split('/').length - 1])));
+                            embed.addField(value[0], this.format(value[1].fix.join('\n'), message));
                         }
                         break;
                     default: break;
                 }
             });
-        }
 
-        if (validChecks.length == 0 || validChecks == null) {
-            const reactions = message.reactions.cache.filter((reaction) => reaction.users.cache.has(message.client.user.id)).values();
-            // eslint-disable-next-line no-restricted-syntax
-            for (const reaction of reactions) {
-                await reaction.users.remove(reaction.client.user.id);
+            if (config.notes) {
+                Object.entries(config.notes).forEach((value) => {
+                    const note = value[1];
+                    if (
+                        content.match(RegExp(note.value.split('/')[1], note.value.split('/')[note.value.split('/').length - 1])) != null
+                                && content.match(RegExp(note.value.split('/')[1], note.value.split('/')[note.value.split('/').length - 1])).length != 0
+                    ) {
+                        embed.description += `${content.match(RegExp(note.value.split('/')[1], note.value.split('/')[note.value.split('/').length - 1])).join(' - ')}\n`;
+                    }
+                });
             }
-            return;
         }
 
-        const embedPropertiesTemp: Embed = {
-            author: {
-                text: 'Scanner',
-                icon: message.client.user.displayAvatarURL(),
-            },
-            description: '**Note:** This is an automated support bot and is not always be accurate!',
-            color: '#f05050',
-            footer: {
-                icon: 'https://cdn.discordapp.com/avatars/507646181816401961/f19611b032be5eb402e1c1010e8f19b5.webp',
-                text: 'Scanner by Lynith#0231',
-            },
-        };
-
-        const embedProperties = { ...embedPropertiesTemp, ...config.embed };
-
-        const embed = new MessageEmbed({
-            author: {
-                icon_url: embedProperties.author.icon,
-                name: embedProperties.author.text,
-            },
-            title: embedProperties.title,
-            description: embedProperties.description,
-            color: `#${embedProperties.color.replaceAll('#', '')}`,
-            footer: {
-                text: embedProperties.footer.text,
-                icon_url: embedProperties.footer.icon,
-            },
-        });
-
-        for (let index = 0; index < validChecks.length; index++) {
-            if (index >= 9 || embed.length >= 5500) break; // 5500 to "protect" from reaching 6000 char limit
-            const value = validChecks[index];
-            embed.addField(value[0], this.format(value[1].fix.join('\n').replaceAll('{match}', matchValues[index].toString()), message));
+        if (embed.fields.length == undefined || embed.fields.length == 0) {
+            // eslint-disable-next-line no-restricted-syntax
+            for (const reaction of message.reactions.cache.filter((reaction) => reaction.users.cache.has(message.client.user.id)).values()) await reaction.users.remove(reaction.client.user.id);
+            return;
         }
 
         message.reply({

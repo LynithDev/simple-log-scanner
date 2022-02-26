@@ -11,6 +11,10 @@ export type Check = {
     fix: string[]
 }
 
+export type Note = {
+    value:string,
+}
+
 export type Embed = {
     color?: string,
     author?: {
@@ -30,6 +34,9 @@ export type ConfigType = {
     image_scanning: boolean,
     extensions: string[],
     embed: Embed,
+    notes: {
+        [name: string]: Note
+    }
     whitelist: string[],
     checks: {
         [name: string]: Check

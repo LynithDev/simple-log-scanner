@@ -1,6 +1,10 @@
 {
     "token": "token",
     "embed": {
+        "author": {
+            "icon": "optional (https only)",
+            "text": "optional"
+        },
         "title": "optional",
         "description": "optional",
         "color": "optional HEX code (Can be with or without the hashtag)",
@@ -9,6 +13,9 @@
             "icon": "optional (https only)"
         }
     },
+    "whitelist": [
+        "*"
+    ],
     "image_scanning": true,
     "extensions": [
         ".txt",

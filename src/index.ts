@@ -13,6 +13,10 @@ export type Check = {
 
 export type Embed = {
     color?: string,
+    author?: {
+        icon?: string,
+        text?: string
+    },
     title?: string,
     description?: string,
     footer?: {
@@ -26,6 +30,7 @@ export type ConfigType = {
     image_scanning: boolean,
     extensions: string[],
     embed: Embed,
+    whitelist: string[],
     checks: {
         [name: string]: Check
     }
@@ -33,9 +38,15 @@ export type ConfigType = {
 const config: ConfigType = JSON.parse(readFileSync(join(__dirname, '..', 'config.json'), 'utf-8'));
 
 client.login(config.token);
+const parser = new Parser();
+
 client.on('messageCreate', async (msg) => {
-    const parser = new Parser(msg);
-    const checks = await parser.parse();
+    const checks = await parser.parse(msg);
+});
+
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton()) return;
+    const i = await parser.handleButtons(interaction);
 });
 
 client.on('ready', () => console.log(`Logged in as ${client.user.tag}`));

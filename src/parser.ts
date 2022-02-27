@@ -3,7 +3,7 @@ import {
     ButtonInteraction,
     Message, MessageActionRow, MessageAttachment, MessageButton, MessageEmbed,
 } from 'discord.js';
-import { readFileSync } from 'fs';
+import * as fs from 'fs';
 import { join } from 'path';
 import Tesseract from 'tesseract.js';
 import {
@@ -11,6 +11,19 @@ import {
 } from '.';
 
 export class Parser {
+    public addStat(key: string, value: any) {
+        const config: ConfigType = JSON.parse(fs.readFileSync(join(__dirname, '..', 'config.json'), 'utf-8'));
+        if (!config.stats) return;
+        const statFile = join(__dirname, '..', 'stats.json');
+        const data = (fs.existsSync(statFile) ? JSON.parse(fs.readFileSync(statFile, 'utf-8')) : {});
+        fs.writeFileSync(statFile, JSON.stringify({ ...data, ...{ [key]: value } }));
+    }
+
+    public getStat<T>(key: string): T | undefined {
+        const statFile = join(__dirname, '..', 'stats.json');
+        return fs.existsSync(statFile) ? JSON.parse(fs.readFileSync(statFile, 'utf-8'))[key] : undefined;
+    }
+
     public async handleButtons(interaction: ButtonInteraction) {
         let message: Message;
         switch (interaction.customId) {
@@ -26,6 +39,7 @@ export class Parser {
                     });
                 }
 
+                this.addStat('fixed', (this.getStat('fixed') == undefined ? 0 : this.getStat<number>('fixed')) + 1);
                 if (message.deletable.valueOf()) await message.delete();
                 if (interaction.message.deletable.valueOf()) await interaction.message.delete();
                 break;
@@ -34,12 +48,9 @@ export class Parser {
     }
 
     public async parse(message: Message): Promise<[string, Check][]> {
-        const config: ConfigType = JSON.parse(readFileSync(join(__dirname, '..', 'config.json'), 'utf-8'));
+        const config: ConfigType = JSON.parse(fs.readFileSync(join(__dirname, '..', 'config.json'), 'utf-8'));
 
-        if (!config.whitelist.includes('*') && !config.whitelist.includes(message.channel.id)) return;
-        const attachments: MessageAttachment[] = [];
-
-        config.extensions.forEach((ext) => message.attachments.filter((attachment) => attachment.name.endsWith(ext) || (config.image_scanning ? attachment.contentType.startsWith('image') : true)).forEach((attachment) => attachments.push(attachment)));
+        if (config.whitelist.length != 0 && !config.whitelist.includes(message.channel.id)) return;
 
         const embedProperties = {
             ...{
@@ -70,6 +81,30 @@ export class Parser {
                 icon_url: embedProperties.footer.icon,
             },
         });
+
+        if (message.content.toLowerCase() == '.stats') {
+            message.reply({
+                embeds: [
+                    embed.setDescription((!config.stats ? '**Stats have been disabled**' : '')).addFields([
+                        {
+                            name: 'Sent fixes',
+                            value: String((this.getStat('sent_fix') == undefined ? 0 : this.getStat<number>('sent_fix'))),
+                            inline: true,
+                        },
+                        {
+                            name: 'Confirmed Fixes',
+                            value: String((this.getStat('fixed') == undefined ? 0 : this.getStat<number>('fixed'))),
+                            inline: true,
+                        },
+                    ]),
+                ],
+            });
+            return;
+        }
+
+        const attachments: MessageAttachment[] = [];
+
+        config.extensions.forEach((ext) => message.attachments.filter((attachment) => attachment.name.endsWith(ext) || (config.image_scanning ? attachment.contentType.startsWith('image') : true)).forEach((attachment) => attachments.push(attachment)));
 
         for (let i = 0; i < attachments.length; i++) {
             const value = message.attachments.at(i);
@@ -153,7 +188,7 @@ export class Parser {
                     ],
                 }),
             ],
-        });
+        }).then(() => this.addStat('sent_fix', (this.getStat('sent_fix') == undefined ? 0 : this.getStat<number>('sent_fix')) + 1));
     }
 
     private format(str: string, message: Message): string {

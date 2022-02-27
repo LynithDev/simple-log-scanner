@@ -1,7 +1,16 @@
-import { Client, Intents, MessageEmbed } from 'discord.js';
-import { readFileSync } from 'fs';
+import {
+    Client, Intents, MessageEmbed, Presence, User,
+} from 'discord.js';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { exit } from 'process';
 import { Parser } from './parser';
+
+if (!existsSync(join(__dirname, '..', 'config.json'))) {
+    console.log('Thank you for using this bot!');
+    console.log('To get started, rename config.json.template to config.json and configure it. After that, start the bot up again, upload a log or image and have fun!');
+    exit(0);
+}
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 
@@ -34,6 +43,7 @@ export type ConfigType = {
     image_scanning: boolean,
     extensions: string[],
     embed: Embed,
+    stats: boolean,
     notes: {
         [name: string]: Note
     }
@@ -47,7 +57,19 @@ const config: ConfigType = JSON.parse(readFileSync(join(__dirname, '..', 'config
 client.login(config.token);
 const parser = new Parser();
 
+const slowedUsers: User[] = [];
+
+const slowDownUser = (user: User) => {
+    slowedUsers.push(user);
+    setInterval(() => {
+        const index = slowedUsers.indexOf(user);
+        if (index > -1) slowedUsers.splice(index, 1);
+    }, 5 * 1000);
+};
+
 client.on('messageCreate', async (msg) => {
+    if (slowedUsers.includes(msg.author)) return;
+    slowDownUser(msg.author);
     const checks = await parser.parse(msg);
 });
 
@@ -56,4 +78,13 @@ client.on('interactionCreate', async (interaction) => {
     const i = await parser.handleButtons(interaction);
 });
 
-client.on('ready', () => console.log(`Logged in as ${client.user.tag}`));
+client.on('ready', () => {
+    console.log(`Logged in as ${client.user.tag}`);
+    client.user.setPresence({
+        status: 'online',
+        activities: [{
+            name: 'messages | .stats',
+            type: 'WATCHING',
+        }],
+    });
+});

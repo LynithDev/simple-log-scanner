@@ -14,7 +14,8 @@
         }
     },
     "whitelist": [
-        "*"
+        "channel_ids",
+        "leave the whole array blank if you want to whitelist every channel"
     ],
     "image_scanning": true,
     "extensions": [
@@ -22,6 +23,18 @@
         ".log",
         "you can leave a blank element if you want to support every file type"
     ],
+    "stats": true,
+    "notes": {
+        "Java Version": {
+            "value": "/((java|jre|jdk) (version)?:? ?\"?((\\d+(\\.|_)\\d+(\\.|_)\\d+(\\.|_)?\\d*)|\\d(?!.))\"?)/ig"
+        },
+        "Forge Version": {
+            "value": "/(Forge (?!\\s)(\\d||\\.)*)/ig"
+        },
+        "Optifine Version": {
+            "value": "/(OptiFine Version: .*)/ig"
+        }
+    },
     "checks": {
         "Title of fix": {
             "method": "matches includes or equals",

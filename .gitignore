@@ -3,3 +3,4 @@ dist/
 config.json
 logs/
 *.traineddata
+stats.json
